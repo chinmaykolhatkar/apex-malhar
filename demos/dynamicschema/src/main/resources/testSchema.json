@@ -1,0 +1,24 @@
+{
+  "fqcn": "com.datatorrent.generated.Person",
+  "fields": [
+    {
+      "name": "firstname",
+      "type": "java.lang.String",
+      "default" : "firstname"
+    },
+    {
+      "name": "lastname",
+      "type": "java.lang.String",
+      "default" : "lastname"
+    },
+    {
+      "name": "fullname",
+      "type": "java.lang.String" ,
+      "default" : "fullname"
+    },
+    {
+      "name": "namelength",
+      "type": "int"
+    }    
+  ]
+}

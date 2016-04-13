@@ -1,20 +1,6 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Copyright (c) 2015 DataTorrent, Inc.
+ * All rights reserved.
  */
 package com.datatorrent.lib.schema;
 
@@ -27,13 +13,13 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.xbean.asm5.ClassWriter;
 import org.apache.xbean.asm5.Opcodes;
 import org.apache.xbean.asm5.tree.*;
+
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-//import com.datatorrent.stram.webapp.asm.MethodNode;
 
 /**
  * Creates a bean class on fly.
@@ -63,6 +49,11 @@ public class BeanClassGenerator
     PRIMITIVE_TYPES = ImmutableMap.copyOf(types);
   }
 
+  public static byte[] createAndWriteBeanClass(String fqcn, JSONObject jsonObject) throws IOException, JSONException
+  {
+    return createAndWriteBeanClass(fqcn, jsonObject, null);
+  }
+
   /**
    * Creates a class from the json and writes it to the output stream.
    *
@@ -73,8 +64,8 @@ public class BeanClassGenerator
    * @throws IOException
    */
   @SuppressWarnings("unchecked")
-  public static void createAndWriteBeanClass(String fqcn, JSONObject jsonObject,
-                                             FSDataOutputStream outputStream) throws JSONException, IOException
+  public static byte[] createAndWriteBeanClass(String fqcn, JSONObject jsonObject, FSDataOutputStream outputStream)
+      throws JSONException, IOException
   {
     ClassNode classNode = new ClassNode();
 
@@ -87,7 +78,8 @@ public class BeanClassGenerator
     // add default constructor
     MethodNode constructorNode = new MethodNode(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
     constructorNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
-    constructorNode.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false));
+    constructorNode.instructions
+        .add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false));
     constructorNode.instructions.add(new InsnNode(Opcodes.RETURN));
     classNode.methods.add(constructorNode);
 
@@ -138,17 +130,25 @@ public class BeanClassGenerator
     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
     classNode.accept(cw);
     cw.visitEnd();
-    outputStream.write(cw.toByteArray());
-    outputStream.close();
+
+    byte[] classBytes = cw.toByteArray();
+
+    if (outputStream != null) {
+      outputStream.write(classBytes);
+      outputStream.close();
+    }
+
+    return classBytes;
   }
 
   @SuppressWarnings("unchecked")
   private static void addIntGetterNSetter(ClassNode classNode, String fieldName, String fieldNameForMethods,
-                                          String fieldJavaType, boolean isBoolean)
+      String fieldJavaType, boolean isBoolean)
   {
     // Create getter
     String getterSignature = "()" + fieldJavaType;
-    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, (isBoolean ? "is" : "get") + fieldNameForMethods, getterSignature, null, null);
+    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, (isBoolean ? "is" : "get") + fieldNameForMethods,
+        getterSignature, null, null);
     getterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     getterNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
     getterNode.instructions.add(new InsnNode(Opcodes.IRETURN));
@@ -156,7 +156,8 @@ public class BeanClassGenerator
 
     // Create setter
     String setterSignature = '(' + fieldJavaType + ')' + 'V';
-    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null, null);
+    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null,
+        null);
     setterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     setterNode.instructions.add(new VarInsnNode(Opcodes.ILOAD, 1));
     setterNode.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, classNode.name, fieldName, fieldJavaType));
@@ -167,11 +168,12 @@ public class BeanClassGenerator
 
   @SuppressWarnings("unchecked")
   private static void addLongGetterNSetter(ClassNode classNode, String fieldName, String fieldNameForMethods,
-                                           String fieldJavaType)
+      String fieldJavaType)
   {
     // Create getter
     String getterSignature = "()" + fieldJavaType;
-    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null, null);
+    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null,
+        null);
     getterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     getterNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
     getterNode.instructions.add(new InsnNode(Opcodes.LRETURN));
@@ -179,7 +181,8 @@ public class BeanClassGenerator
 
     // Create setter
     String setterSignature = '(' + fieldJavaType + ')' + 'V';
-    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null, null);
+    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null,
+        null);
     setterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     setterNode.instructions.add(new VarInsnNode(Opcodes.LLOAD, 1));
     setterNode.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, classNode.name, fieldName, fieldJavaType));
@@ -189,11 +192,12 @@ public class BeanClassGenerator
 
   @SuppressWarnings("unchecked")
   private static void addFloatGetterNSetter(ClassNode classNode, String fieldName, String fieldNameForMethods,
-                                            String fieldJavaType)
+      String fieldJavaType)
   {
     // Create getter
     String getterSignature = "()" + fieldJavaType;
-    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null, null);
+    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null,
+        null);
     getterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     getterNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
     getterNode.instructions.add(new InsnNode(Opcodes.FRETURN));
@@ -201,7 +205,8 @@ public class BeanClassGenerator
 
     // Create setter
     String setterSignature = '(' + fieldJavaType + ')' + 'V';
-    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null, null);
+    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null,
+        null);
     setterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     setterNode.instructions.add(new VarInsnNode(Opcodes.FLOAD, 1));
     setterNode.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, classNode.name, fieldName, fieldJavaType));
@@ -211,11 +216,12 @@ public class BeanClassGenerator
 
   @SuppressWarnings("unchecked")
   private static void addDoubleGetterNSetter(ClassNode classNode, String fieldName, String fieldNameForMethods,
-                                             String fieldJavaType)
+      String fieldJavaType)
   {
     // Create getter
     String getterSignature = "()" + fieldJavaType;
-    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null, null);
+    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null,
+        null);
     getterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     getterNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
     getterNode.instructions.add(new InsnNode(Opcodes.DRETURN));
@@ -223,7 +229,8 @@ public class BeanClassGenerator
 
     // Create setter
     String setterSignature = '(' + fieldJavaType + ')' + 'V';
-    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null, null);
+    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null,
+        null);
     setterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     setterNode.instructions.add(new VarInsnNode(Opcodes.DLOAD, 1));
     setterNode.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, classNode.name, fieldName, fieldJavaType));
@@ -233,11 +240,12 @@ public class BeanClassGenerator
 
   @SuppressWarnings("unchecked")
   private static void addObjectGetterNSetter(ClassNode classNode, String fieldName, String fieldNameForMethods,
-                                             String fieldJavaType)
+      String fieldJavaType)
   {
     // Create getter
     String getterSignature = "()" + fieldJavaType;
-    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null, null);
+    MethodNode getterNode = new MethodNode(Opcodes.ACC_PUBLIC, "get" + fieldNameForMethods, getterSignature, null,
+        null);
     getterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     getterNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
     getterNode.instructions.add(new InsnNode(Opcodes.ARETURN));
@@ -245,7 +253,8 @@ public class BeanClassGenerator
 
     // Create setter
     String setterSignature = '(' + fieldJavaType + ')' + 'V';
-    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null, null);
+    MethodNode setterNode = new MethodNode(Opcodes.ACC_PUBLIC, "set" + fieldNameForMethods, setterSignature, null,
+        null);
     setterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
     setterNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 1));
     setterNode.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, classNode.name, fieldName, fieldJavaType));
@@ -269,7 +278,8 @@ public class BeanClassGenerator
     toStringNode.instructions.add(new TypeInsnNode(Opcodes.NEW, "java/lang/StringBuilder"));
     toStringNode.instructions.add(new InsnNode(Opcodes.DUP));
     toStringNode.instructions.add(new LdcInsnNode(classNode.name + "{"));
-    toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "(Ljava/lang/String;)V", false));
+    toStringNode.instructions.add(
+        new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "(Ljava/lang/String;)V", false));
     toStringNode.instructions.add(new VarInsnNode(Opcodes.ASTORE, 1));
     toStringNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 1));
 
@@ -281,11 +291,13 @@ public class BeanClassGenerator
 
       if (i != 0) {
         toStringNode.instructions.add(new LdcInsnNode(", "));
-        toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
+        toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append",
+            "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
       }
 
       toStringNode.instructions.add(new LdcInsnNode(fieldName + "="));
-      toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
+      toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append",
+          "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
       toStringNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
       toStringNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
 
@@ -293,15 +305,19 @@ public class BeanClassGenerator
       if (fieldJavaType.equals("S") || fieldJavaType.equals("B")) {
         fieldJavaType = "I";
       }
-      toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(" + fieldJavaType + ")Ljava/lang/StringBuilder;", false));
+      toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append",
+          "(" + fieldJavaType + ")Ljava/lang/StringBuilder;", false));
     }
 
     toStringNode.instructions.add(new LdcInsnNode("}"));
-    toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
+    toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append",
+        "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
 
     toStringNode.instructions.add(new InsnNode(Opcodes.POP));
     toStringNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 1));
-    toStringNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false));
+    toStringNode.instructions.add(
+        new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;",
+            false));
     toStringNode.instructions.add(new InsnNode(Opcodes.ARETURN));
 
     classNode.methods.add(toStringNode);
@@ -313,7 +329,7 @@ public class BeanClassGenerator
    * <i><p>
    * int hashCode = 7;
    * for (field: all fields) {
-   *   hashCode = 23 * hashCode + field.hashCode()
+   * hashCode = 23 * hashCode + field.hashCode()
    * }
    * </p></i>
    * <br>
@@ -361,7 +377,8 @@ public class BeanClassGenerator
         case "int":
           break;
         case "float":
-          hashCodeNode.instructions.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/Float", "floatToIntBits", "(F)I", false));
+          hashCodeNode.instructions
+              .add(new MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/Float", "floatToIntBits", "(F)I", false));
           break;
         case "long":
           hashCodeNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
@@ -372,7 +389,8 @@ public class BeanClassGenerator
           hashCodeNode.instructions.add(new InsnNode(Opcodes.L2I));
           break;
         case "double":
-          hashCodeNode.instructions.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/Double", "doubleToLongBits", "(D)J", false));
+          hashCodeNode.instructions
+              .add(new MethodInsnNode(Opcodes.INVOKESTATIC, "java/lang/Double", "doubleToLongBits", "(D)J", false));
           hashCodeNode.instructions.add(new InsnNode(Opcodes.DUP2));
           hashCodeNode.instructions.add(new VarInsnNode(Opcodes.LSTORE, 2));
           hashCodeNode.instructions.add(new VarInsnNode(Opcodes.LLOAD, 2));
@@ -383,7 +401,8 @@ public class BeanClassGenerator
           break;
         default:
           String objectOwnerType = fieldType.replace('.', '/');
-          hashCodeNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, objectOwnerType, "hashCode", "()I", false));
+          hashCodeNode.instructions
+              .add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, objectOwnerType, "hashCode", "()I", false));
           break;
       }
       hashCodeNode.instructions.add(new InsnNode(Opcodes.IADD));
@@ -408,6 +427,7 @@ public class BeanClassGenerator
    * return true;
    * </p></i>
    * <br>
+   *
    * @param classNode
    * @param allFields
    * @throws JSONException
@@ -458,9 +478,12 @@ public class BeanClassGenerator
       String fieldType = fieldObj.getString(JSON_KEY_TYPE);
       String fieldJavaType = getJavaType(fieldType);
 
-      String getterMethodName = (fieldType.equals("boolean") ? "is" : "get")+ Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+      String getterMethodName =
+          (fieldType.equals("boolean") ? "is" : "get") + Character.toUpperCase(fieldName.charAt(0)) + fieldName
+              .substring(1);
       equalsNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 2));
-      equalsNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, classNode.name, getterMethodName, "()" + fieldJavaType, false));
+      equalsNode.instructions.add(
+          new MethodInsnNode(Opcodes.INVOKEVIRTUAL, classNode.name, getterMethodName, "()" + fieldJavaType, false));
       equalsNode.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
       equalsNode.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, classNode.name, fieldName, fieldJavaType));
 
@@ -470,7 +493,8 @@ public class BeanClassGenerator
         case "char":
         case "short":
         case "int":
-          equalsNode.instructions.add(new JumpInsnNode(isLast ? Opcodes.IF_ICMPEQ : Opcodes.IF_ICMPNE, isLast ? l4 : l3));
+          equalsNode.instructions
+              .add(new JumpInsnNode(isLast ? Opcodes.IF_ICMPEQ : Opcodes.IF_ICMPNE, isLast ? l4 : l3));
           break;
         case "long":
           equalsNode.instructions.add(new InsnNode(Opcodes.LCMP));
@@ -486,7 +510,8 @@ public class BeanClassGenerator
           break;
         default:
           String objectOwnerType = fieldType.replace('.', '/');
-          equalsNode.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, objectOwnerType, "equals", "(Ljava/lang/Object;)Z", false));
+          equalsNode.instructions.add(
+              new MethodInsnNode(Opcodes.INVOKEVIRTUAL, objectOwnerType, "equals", "(Ljava/lang/Object;)Z", false));
           equalsNode.instructions.add(new JumpInsnNode(isLast ? Opcodes.IFNE : Opcodes.IFEQ, isLast ? l4 : l3));
           break;
       }
@@ -526,7 +551,20 @@ public class BeanClassGenerator
   {
     byte[] bytes = IOUtils.toByteArray(inputStream);
     inputStream.close();
-    return new ByteArrayClassLoader().defineClass(fqcn, bytes);
+    return readBeanClass(fqcn, bytes);
+  }
+
+  /**
+   * Given the class name it reads and loads the class from given byte array.
+   *
+   * @param fqcn       fully qualified class name.
+   * @param inputClass byte[] from which class is read.
+   * @return loaded class
+   * @throws IOException
+   */
+  public static Class<?> readBeanClass(String fqcn, byte[] inputClass) throws IOException
+  {
+    return new ByteArrayClassLoader().defineClass(fqcn, inputClass);
   }
 
   private static class ByteArrayClassLoader extends ClassLoader

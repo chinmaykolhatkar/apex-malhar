@@ -1,5 +1,5 @@
 {
-  "name": "Energy",
+  "fqcn": "com.datatorrent.generated.Energy",
   "fields": [
     {
       "name": "streetNumber",

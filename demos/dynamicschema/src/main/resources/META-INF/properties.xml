@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>dt.operator.input.maxEmitsPerWindow</name>
+    <value>50</value>
+  </property>
+
+  <property>
+    <name>dt.operator.transform.expressionMap(lastname)</name>
+    <value>{$.firstname}</value>
+  </property>
+  <property>
+    <name>dt.operator.transform.expressionMap(firstname)</name>
+    <value>{$.lastname}</value>
+  </property>
+  <property>
+    <name>dt.operator.transform.expressionMap(fullname)</name>
+    <value>{$.firstname} + " " + {$.lastname}</value>
+  </property>
+  <property>
+    <name>dt.operator.transform.expressionMap(namelength)</name>
+    <value>length({$.firstname} + " " + {$.lastname})</value>
+  </property>
+
+  <property>
+    <name>dt.stream.S2.schema</name>
+    <value>testSchema.json</value>
+  </property>
+
+</configuration>
+

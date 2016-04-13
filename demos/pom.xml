@@ -192,6 +192,7 @@
     <module>r</module>
     <module>echoserver</module>
     <module>iteration</module>
+    <module>dynamicschema</module>
   </modules>
 
   <dependencies>
