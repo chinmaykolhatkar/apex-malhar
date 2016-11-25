@@ -28,20 +28,12 @@ import java.util.Map;
 
 import javax.validation.ValidationException;
 
+import org.apache.apex.malhar.lib.window.*;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.malhar.lib.state.spillable.WindowListener;
-import org.apache.apex.malhar.lib.window.Accumulation;
-import org.apache.apex.malhar.lib.window.ControlTuple;
-import org.apache.apex.malhar.lib.window.TriggerOption;
-import org.apache.apex.malhar.lib.window.Tuple;
-import org.apache.apex.malhar.lib.window.Window;
-import org.apache.apex.malhar.lib.window.WindowOption;
-import org.apache.apex.malhar.lib.window.WindowState;
-import org.apache.apex.malhar.lib.window.WindowedOperator;
-import org.apache.apex.malhar.lib.window.WindowedStorage;
 import org.apache.hadoop.classification.InterfaceStability;
 
 import com.google.common.base.Function;
@@ -95,6 +87,7 @@ public abstract class AbstractWindowedOperator<InputT, OutputT, DataStorageT ext
   protected DataStorageT dataStorage;
   protected RetractionStorageT retractionStorage;
   protected AccumulationT accumulation;
+  protected HeuristicWatermark heuristicWatermark;
 
 
   protected static final transient Collection<? extends Window> GLOBAL_WINDOW_SINGLETON_SET = Collections.singleton(Window.GlobalWindow.INSTANCE);
@@ -144,6 +137,15 @@ public abstract class AbstractWindowedOperator<InputT, OutputT, DataStorageT ext
       Tuple.WindowedTuple<InputT> windowedTuple = getWindowedValueWithTimestamp(tuple, timestamp);
       // do the accumulation
       accumulateTuple(windowedTuple);
+
+      // Process if any heuristic watermark
+      if (heuristicWatermark != null) {
+        ControlTuple.Watermark watermark = heuristicWatermark.processTupleForWatermark(windowedTuple);
+        if (watermark != null) {
+          processWatermark(watermark);
+        }
+      }
+
       processWindowState(windowedTuple);
     }
   }
@@ -232,6 +234,11 @@ public abstract class AbstractWindowedOperator<InputT, OutputT, DataStorageT ext
   public void addComponent(String key, Component<Context.OperatorContext> component)
   {
     components.put(key, component);
+  }
+
+  public void setHeuristicWatermark(HeuristicWatermark watermark)
+  {
+    this.heuristicWatermark = watermark;
   }
 
   /**
@@ -427,6 +434,9 @@ public abstract class AbstractWindowedOperator<InputT, OutputT, DataStorageT ext
     if (retractionStorage != null) {
       retractionStorage.setup(context);
     }
+    if (heuristicWatermark != null) {
+      heuristicWatermark.setup(context);
+    }
     for (Component component : components.values()) {
       component.setup(context);
     }
@@ -440,6 +450,9 @@ public abstract class AbstractWindowedOperator<InputT, OutputT, DataStorageT ext
   {
     windowStateMap.teardown();
     dataStorage.teardown();
+    if (heuristicWatermark != null) {
+      heuristicWatermark.teardown();
+    }
     if (retractionStorage != null) {
       retractionStorage.teardown();
     }
