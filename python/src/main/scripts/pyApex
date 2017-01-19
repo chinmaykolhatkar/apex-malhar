@@ -113,17 +113,12 @@ else
 fi
 
 sleep 5
-if ps -p "$APEXRUNNERPID" >/dev/null; then
-  echo "Apex Runner is started as process id: " $APEXRUNNERPID
-else
-  echo "Failed to start ApexRunner. Check logs at $APEXRUNNERLOG for details."
-  exit 1
-fi  
+echo "Apex Runner is started as process id: " $APEXRUNNERPID
 
 PYTHONPATH=$PYTHONPATH:"${script_dir}/../python" python "$@"
 
 if ! kill $APEXRUNNERPID > /dev/null 2>&1; then
-  echo "Could not send SIGTERM to process $PID. Force killing" >&2
+  echo "Could not send SIGTERM to process $PID. Force killing" >/dev/null >&2
   kill -9 $APEXRUNNERPID >/dev/null 2>&1 
 fi
 
