@@ -34,22 +34,14 @@ import org.apache.apex.malhar.sql.table.Endpoint;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.Filter;
-import org.apache.calcite.rel.core.Join;
-import org.apache.calcite.rel.core.JoinRelType;
-import org.apache.calcite.rel.core.Project;
-import org.apache.calcite.rel.core.TableModify;
-import org.apache.calcite.rel.core.TableScan;
-import org.apache.calcite.rel.logical.LogicalFilter;
-import org.apache.calcite.rel.logical.LogicalJoin;
-import org.apache.calcite.rel.logical.LogicalProject;
-import org.apache.calcite.rel.logical.LogicalTableModify;
-import org.apache.calcite.rel.logical.LogicalTableScan;
+import org.apache.calcite.rel.core.*;
+import org.apache.calcite.rel.logical.*;
 import org.apache.calcite.rel.stream.Delta;
 import org.apache.calcite.rel.stream.LogicalDelta;
 import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.sql.SqlAggFunction;
 import org.apache.calcite.util.Pair;
 import org.apache.hadoop.classification.InterfaceStability;
 
@@ -77,6 +69,7 @@ public abstract class ApexRelNode
       .put(LogicalProject.class, new ApexProjectRel())
       .put(LogicalFilter.class, new ApexFilterRel())
       .put(LogicalJoin.class, new ApexJoinRel())
+      .put(LogicalAggregate.class, new ApexAggregateRel())
       .build();
 
   public abstract RelInfo visit(RelContext context, RelNode node, List<RelInfo> inputStreams);
@@ -338,6 +331,36 @@ public abstract class ApexRelNode
 
       return new RelInfo("Join", Lists.<Operator.InputPort>newArrayList(innerJoin.input1, innerJoin.input2), innerJoin,
           innerJoin.outputPort, join.getRowType());
+    }
+  }
+
+  private static class ApexAggregateRel extends ApexRelNode
+  {
+    @Override
+    public RelInfo visit(RelContext context, RelNode node, List<RelInfo> inputStreams)
+    {
+      Aggregate agg = (Aggregate) node;
+
+      // Part of select
+      for (Pair<AggregateCall, String> pair : agg.getNamedAggCalls()) {
+        AggregateCall key = pair.getKey();
+        SqlAggFunction aggregation = key.getAggregation();
+
+        for (Integer integer : key.getArgList()) {
+          RelDataTypeField relDataTypeField = agg.getInput().getRowType().getFieldList().get(integer);
+          String name = relDataTypeField.getName();
+        }
+      }
+
+      // Part of GROUP BY
+      for (Integer integer : agg.getGroupSet()) {
+        RelDataTypeField relDataTypeField = agg.getInput().getRowType().getFieldList().get(integer);
+        String name = relDataTypeField.getName();
+      }
+
+
+      System.out.println(context);
+      return null;
     }
   }
 }

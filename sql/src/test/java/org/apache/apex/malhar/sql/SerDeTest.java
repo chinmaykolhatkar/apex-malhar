@@ -71,7 +71,7 @@ public class SerDeTest
 
     SQLExecEnvironment.getEnvironment()
         .registerTable("ORDERS", endpoint)
-        .executeSQL(dag, "SELECT STREAM FLOOR(ROWTIME TO HOUR), SUBSTRING(PRODUCT, 0, 5) FROM ORDERS WHERE id > 3");
+        .executeSQL(dag, "SELECT STREAM FLOOR(ROWTIME TO HOUR), SUBSTRING(PRODUCT, 0, 5), COUNT(*), SUM(units) FROM ORDERS WHERE id > 3 GROUP BY FLOOR(RowTime TO HOUR), Product");
 
     dag.validate();
   }
